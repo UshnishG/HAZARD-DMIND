@@ -111,6 +111,39 @@ You can serve the `frontend/` folder using any static HTTP server (like VS Code 
 
 *Note: If you wish to connect directly to Render bypassing the Vercel proxy, copy your live Render URL and paste it into the `const BACKEND_URL = '';` variable at the top of the script tag in `detection.html` and `dashboard.html`.*
 
+### Backend & Frontend (Hugging Face Spaces)
+You can host both the backend (FastAPI) and the frontend (static dashboard) as a single service on Hugging Face Spaces using the **Docker** SDK.
+
+1. **Create Space**:
+   - Go to [Hugging Face Spaces](https://huggingface.co/spaces) and click **Create new Space**.
+   - Choose a name for your Space.
+   - Select **Docker** as the SDK.
+   - Choose the **Blank** template (which automatically detects your root `Dockerfile`).
+   - Set Space visibility and hardware type (CPU basic is free and sufficient, but upgraded CPU or GPU is recommended for faster AI model inference).
+
+2. **Configure Environment Secrets**:
+   - In your Space, navigate to **Settings** -> **Variables and secrets**.
+   - Add your secret keys under the **Secrets** section:
+     - `ROBOFLOW_API_KEY`: Your private Roboflow API key.
+     - `HF_REPO_ID` (Optional): Specify if you want to use a different model repo (defaults to `Ushnish2004/LandmineModel`).
+     - `ROBOFLOW_WORKSPACE` (Optional): Override the default workspace if needed.
+     - `ROBOFLOW_WORKFLOW_ID` (Optional): Override the default workflow ID if needed.
+
+3. **Deploy Code**:
+   - Clone the Space repository locally or link your repository to the Hugging Face Space git remote:
+     ```bash
+     git remote add hf https://huggingface.co/spaces/<username>/<space-name>
+     ```
+   - Push your code to Hugging Face Spaces:
+     ```bash
+     git push hf main --force
+     ```
+   - Hugging Face will automatically build the container from the root `Dockerfile` and run the app.
+
+4. **Accessing the Service**:
+   - The interactive Command & Control UI dashboard is directly available at: `https://huggingface.co/spaces/<username>/<space-name>`
+   - The backend API endpoints can be accessed at: `https://<username>-<space-name>.hf.space/`
+
 ---
 
 ## 📡 API Reference Contracts
