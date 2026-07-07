@@ -53,7 +53,7 @@ def secure_filename(filename: str) -> str:
     import re
     return re.sub(r'[^a-zA-Z0-9_.-]', '_', filename)
 
-API_KEY             = os.environ.get("ROBOFLOW_API_KEY", "XrHLYOrHGOKgAVYSoDfP")
+API_KEY             = os.environ.get("ROBOFLOW_API_KEY")
 LANDSLIDE_PROJECT   = "segformer-landslide-detection"
 LANDSLIDE_VERSION   = 2
 LANDMINE_MODEL_PATH = os.path.join(BASE_DIR, "best.pt")
