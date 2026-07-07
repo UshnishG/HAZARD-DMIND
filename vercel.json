@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "https://ushnish2004-backend-dmind.hf.space/api/:match*"
+    },
+    {
+      "source": "/static/:match*",
+      "destination": "https://ushnish2004-backend-dmind.hf.space/static/:match*"
+    }
+  ]
+}
