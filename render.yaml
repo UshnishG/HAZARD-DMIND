@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: d-mind-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: HF_REPO_ID
+        value: Ushnish2004/LandmineModel
+      - key: ROBOFLOW_API_KEY
+        sync: true
+      - key: ROBOFLOW_WORKSPACE
+        value: ieees-workspace-lez6m
+      - key: ROBOFLOW_WORKFLOW_ID
+        value: landslide-segmentation-api-1783455950308

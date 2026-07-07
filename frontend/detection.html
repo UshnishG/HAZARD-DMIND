@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D-MIND &middot; Tactical Detection Terminal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --bg: #050806;           /* dark military forest black */
+      --bg2: #0b120c;          /* olive dark forest panel bg */
+      --green: #00e676;        /* active radar green */
+      --green-dim: rgba(0, 230, 118, 0.12);
+      --green-mid: rgba(0, 230, 118, 0.4);
+      --amber: #ff8f00;        /* warning amber */
+      --amber-dim: rgba(255, 143, 0, 0.12);
+      --danger: #ff3d00;       /* UXO danger red */
+      --danger-dim: rgba(255, 61, 0, 0.12);
+      --tan: #d6ac72;          /* desert tan HUD accents */
+      --tan-dim: rgba(214, 172, 114, 0.15);
+      --glass: rgba(11, 18, 12, 0.85);
+      --glass-border: rgba(214, 172, 114, 0.18);
+      --text: #e8ece9;
+      --text-muted: #627267;
+      --text-dim: #a6b5ab;
+      --font-sans: 'Inter', sans-serif;
+      --font-mono: 'Share Tech Mono', 'JetBrains Mono', monospace;
+      --nav-h: 64px;
+      --radius: 4px;
+      --radius-sm: 2px;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    
+    /* Tactical grid overlay */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 230, 118, 0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 230, 118, 0.015) 1px, transparent 1px);
+      background-size: 30px 30px;
+      pointer-events: none; z-index: 0;
+    }
+
+    /* Scanning sweep line */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 3px;
+      background: linear-gradient(90deg, transparent, rgba(0, 230, 118, 0.15), transparent);
+      animation: scanline 9s linear infinite;
+      pointer-events: none;
+      z-index: 9999;
+    }
+    @keyframes scanline {
+      0% { top: 0%; }
+      100% { top: 100%; }
+    }
+
+    .glow-tl {
+      position: fixed; top: -200px; left: -200px;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(0, 230, 118, 0.04) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+    .glow-br {
+      position: fixed; bottom: -200px; right: -200px;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(214, 172, 114, 0.04) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: rgba(0, 230, 118, 0.2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0, 230, 118, 0.4); }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      height: var(--nav-h);
+      background: rgba(5, 8, 6, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--glass-border);
+      display: flex; align-items: center;
+    }
+    .nav-inner {
+      width: 100%; max-width: 1400px; margin: 0 auto;
+      padding: 0 24px;
+      display: flex; align-items: center; gap: 32px;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none; flex-shrink: 0;
+    }
+    .nav-logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--green), var(--tan));
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 900; color: #050806;
+      letter-spacing: -1px;
+      box-shadow: 0 0 15px rgba(0, 230, 118, 0.2);
+    }
+    .nav-logo-text {
+      font-size: 18px; font-weight: 900;
+      font-family: var(--font-mono);
+      background: linear-gradient(90deg, var(--green), var(--tan));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 1.5px;
+    }
+    .nav-links { display: flex; align-items: center; gap: 4px; list-style: none; flex: 1; }
+    .nav-links a {
+      display: block; padding: 6px 14px;
+      font-size: 13px; font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none; border-radius: var(--radius-sm);
+      transition: all 0.2s;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+    .nav-links a:hover { color: var(--tan); background: rgba(214, 172, 114, 0.05); }
+    .nav-links a.active { color: var(--green); background: rgba(0, 230, 118, 0.08); border: 1px solid rgba(0, 230, 118, 0.2); }
+    .nav-right { margin-left: auto; flex-shrink: 0; }
+    .status-badge {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 14px;
+      background: rgba(0, 230, 118, 0.08);
+      border: 1px solid rgba(0, 230, 118, 0.2);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 10px; font-weight: 700;
+      color: var(--green); letter-spacing: 1.5px;
+    }
+    .status-dot {
+      width: 7px; height: 7px;
+      background: var(--green); border-radius: 50%;
+      animation: pulse-dot 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity:1; transform:scale(1); box-shadow:0 0 0 0 rgba(0,230,118,0.4); }
+      50%      { opacity:0.7; transform:scale(1.2); box-shadow:0 0 0 5px rgba(0,230,118,0); }
+    }
+
+    /* PAGE */
+    .page-wrap {
+      position: relative; z-index: 1;
+      padding-top: calc(var(--nav-h) + 32px);
+      padding-bottom: 60px;
+      max-width: 1400px; margin: 0 auto;
+      padding-left: 24px; padding-right: 24px;
+    }
+    .page-header { margin-bottom: 28px; }
+    .page-header-top { 
+      display: flex; 
+      align-items: center; 
+      gap: 16px; 
+      margin-bottom: 8px; 
+      flex-wrap: wrap; 
+      font-family: var(--font-mono);
+    }
+    .page-eyebrow {
+      font-size: 11px; font-weight: 700;
+      color: var(--green); letter-spacing: 3px; text-transform: uppercase;
+    }
+    .page-eyebrow-sep { width: 30px; height: 1px; background: rgba(0, 230, 118, 0.3); }
+    
+    /* Telemetry Metadata Header */
+    .telemetry-item {
+      font-size: 11px;
+      color: var(--tan);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .telemetry-sep {
+      color: rgba(214, 172, 114, 0.25);
+      font-size: 11px;
+    }
+
+    .page-title {
+      font-size: 32px; font-weight: 900; letter-spacing: -0.5px;
+      background: linear-gradient(90deg, var(--text) 0%, var(--tan) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+    }
+    .page-subtitle { 
+      font-size: 14px; 
+      color: var(--text-dim); 
+      font-weight: 400; 
+      margin-top: 4px;
+      max-width: 800px;
+    }
+
+    /* Force 1-Column full width as per specs */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px; align-items: start;
+    }
+
+    /* TACTICAL GLASS PANEL WITH CORNER BRACKETS */
+    .glass-panel {
+      background: var(--bg2);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      overflow: hidden;
+      position: relative;
+      padding: 2px;
+    }
+    .panel-bracket-tl { position: absolute; top: -1px; left: -1px; width: 14px; height: 14px; border-top: 2px solid var(--tan); border-left: 2px solid var(--tan); pointer-events: none; z-index: 10; }
+    .panel-bracket-tr { position: absolute; top: -1px; right: -1px; width: 14px; height: 14px; border-top: 2px solid var(--tan); border-right: 2px solid var(--tan); pointer-events: none; z-index: 10; }
+    .panel-bracket-bl { position: absolute; bottom: -1px; left: -1px; width: 14px; height: 14px; border-bottom: 2px solid var(--tan); border-left: 2px solid var(--tan); pointer-events: none; z-index: 10; }
+    .panel-bracket-br { position: absolute; bottom: -1px; right: -1px; width: 14px; height: 14px; border-bottom: 2px solid var(--tan); border-right: 2px solid var(--tan); pointer-events: none; z-index: 10; }
+
+    /* PANEL HEADER */
+    .panel-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--glass-border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+      background: rgba(5, 8, 6, 0.4);
+    }
+    .panel-title-group { display: flex; align-items: center; gap: 10px; }
+    .panel-title-icon {
+      width: 32px; height: 32px;
+      background: var(--green-dim);
+      border: 1px solid rgba(0, 230, 118, 0.25); border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center; font-size: 15px;
+      color: var(--green);
+    }
+    .panel-title {
+      font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+      color: var(--green); letter-spacing: 2px; text-transform: uppercase;
+    }
+    .capability-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: var(--radius-sm);
+      font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+      border: 1px solid;
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .badge-fire { background: var(--danger-dim); border-color: rgba(255, 61, 0, 0.3); color: var(--danger); }
+    .badge-fire .badge-dot { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+    .badge-land { background: var(--amber-dim); border-color: rgba(255, 143, 0, 0.3); color: var(--amber); }
+    .badge-land .badge-dot { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+    .badge-mine { background: var(--green-dim); border-color: rgba(0, 230, 118, 0.3); color: var(--green); }
+    .badge-mine .badge-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+    /* TABS */
+    .tab-bar {
+      padding: 0 24px;
+      border-bottom: 1px solid var(--glass-border);
+      display: flex; gap: 16px; position: relative;
+      background: rgba(5, 8, 6, 0.2);
+    }
+    .tab-btn {
+      padding: 16px 12px;
+      font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      color: var(--text-muted); background: none; border: none; cursor: pointer;
+      position: relative; transition: color 0.25s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .tab-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; }
+    .tab-btn:hover { color: var(--tan); }
+    .tab-btn.active { color: var(--green); }
+    
+    .tab-indicator {
+      position: absolute; bottom: -1px; left: 0; height: 2px; width: 0;
+      background: linear-gradient(90deg, var(--green), var(--tan));
+      transition: left 0.3s cubic-bezier(0.4,0,0.2,1), width 0.3s cubic-bezier(0.4,0,0.2,1);
+      box-shadow: 0 0 10px rgba(0, 230, 118, 0.5);
+    }
+    .tab-content { display: none; padding: 24px; }
+    .tab-content.active { display: block; }
+
+    /* DROPZONE (MISSION PAYLOAD DATA LINK) */
+    .dropzone {
+      border: 1px dashed rgba(214, 172, 114, 0.4);
+      border-radius: var(--radius);
+      padding: 48px 24px;
+      text-align: center; cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+      background: rgba(5, 8, 6, 0.4);
+    }
+    .dropzone:hover, .dropzone.drag-active {
+      border-color: var(--green);
+      background: rgba(0, 230, 118, 0.03);
+      box-shadow: 0 0 20px rgba(0, 230, 118, 0.05), inset 0 0 20px rgba(0, 230, 118, 0.01);
+    }
+    .dropzone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; z-index: 10;
+    }
+    .dz-icon {
+      width: 60px; height: 60px; margin: 0 auto 16px;
+      background: rgba(214, 172, 114, 0.05);
+      border: 1px solid rgba(214, 172, 114, 0.2); border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.25s;
+    }
+    .dropzone:hover .dz-icon {
+      background: var(--green-dim);
+      border-color: var(--green);
+      box-shadow: 0 0 12px rgba(0, 230, 118, 0.25);
+    }
+    .dz-icon svg { width: 26px; height: 26px; color: var(--tan); }
+    .dropzone:hover .dz-icon svg { color: var(--green); }
+    
+    .dz-title { 
+      font-family: var(--font-mono);
+      font-size: 13px; font-weight: 700; color: var(--text); 
+      margin-bottom: 6px; letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .dz-sub { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); letter-spacing: 1px; }
+    .dz-formats { display: flex; justify-content: center; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+    .dz-fmt-tag {
+      padding: 3px 10px;
+      background: rgba(5, 8, 6, 0.6); border: 1px solid rgba(214, 172, 114, 0.15);
+      border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 10px; color: var(--tan);
+      letter-spacing: 0.5px;
+    }
+    .file-name-display {
+      margin-top: 14px; padding: 10px 14px;
+      background: rgba(0, 230, 118, 0.06); border: 1px solid rgba(0, 230, 118, 0.2);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono); font-size: 12px; color: var(--green);
+      display: none; align-items: center; gap: 8px;
+      word-break: break-all; text-align: left;
+    }
+    .file-name-display.visible { display: flex; }
+    .file-name-display svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* RUN PAYLOAD ANALYSIS BUTTON WITH SHIMMER */
+    .scan-btn {
+      width: 100%; margin-top: 18px; padding: 15px 24px;
+      background: linear-gradient(135deg, rgba(0, 230, 118, 0.9) 0%, rgba(255, 143, 0, 0.9) 100%);
+      border: 1px solid var(--tan); border-radius: var(--radius-sm);
+      font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+      color: #050806; letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: all 0.3s ease;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      box-shadow: 0 0 10px rgba(0, 230, 118, 0.15);
+    }
+    .scan-btn:hover {
+      box-shadow: 0 0 25px rgba(0, 230, 118, 0.35), 0 0 15px rgba(255, 143, 0, 0.25);
+      border-color: var(--green);
+      transform: translateY(-1px);
+    }
+    .scan-btn:active { transform: translateY(0); }
+    .scan-btn::after {
+      content: ''; position: absolute; top: 0; left: -100%;
+      width: 60%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+      transform: skewX(-20deg);
+    }
+    .scan-btn:hover::after { animation: shimmer 0.8s ease forwards; }
+    @keyframes shimmer { 0% { left: -100%; } 100% { left: 150%; } }
+
+    /* ALERT */
+    .alert {
+      display: none; margin-top: 16px; padding: 12px 16px;
+      border: 1px solid var(--danger); border-radius: var(--radius-sm);
+      background: rgba(255, 61, 0, 0.08); color: var(--danger);
+      font-family: var(--font-mono); font-size: 12px; align-items: center; gap: 10px;
+      letter-spacing: 0.5px;
+    }
+    .alert.visible { display: flex; }
+    .alert svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    /* RESULT AREA */
+    .result-area { display: none; margin-top: 24px; }
+    .result-area.visible { display: block; animation: fadeSlideIn 0.4s ease; }
+    @keyframes fadeSlideIn {
+      from { opacity:0; transform:translateY(12px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .result-divider { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .result-divider-line { flex: 1; height: 1px; background: var(--glass-border); }
+    .result-divider-label {
+      font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+      color: var(--tan); letter-spacing: 2px; text-transform: uppercase;
+    }
+
+    /* TACTICAL STATUS BAR */
+    .status-bar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 18px; border-radius: var(--radius-sm);
+      margin-bottom: 16px; border: 1px solid;
+      font-family: var(--font-mono);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .status-bar.safe { background: rgba(0, 230, 118, 0.08); border-color: rgba(0, 230, 118, 0.3); color: var(--green); }
+    .status-bar.threat { background: rgba(255, 61, 0, 0.08); border-color: rgba(255, 61, 0, 0.3); color: var(--danger); }
+    .status-bar-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .status-bar.safe .status-bar-dot { background: var(--green); animation: pulse-green 1.6s ease-in-out infinite; }
+    .status-bar.threat .status-bar-dot { background: var(--danger); animation: pulse-red 1.2s ease-in-out infinite; }
+    @keyframes pulse-green {
+      0%,100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.5); }
+      50%      { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0); }
+    }
+    @keyframes pulse-red {
+      0%,100% { box-shadow: 0 0 0 0 rgba(255, 61, 0, 0.6); }
+      50%      { box-shadow: 0 0 0 7px rgba(255, 61, 0, 0); }
+    }
+    .status-bar-text { font-size: 13px; font-weight: 700; flex: 1; }
+    .status-bar-icon { font-size: 16px; }
+
+    /* NVD VIEWPORT & COMPONENT COMPARISON */
+    .image-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    @media(max-width: 768px) {
+      .image-comparison { grid-template-columns: 1fr; }
+    }
+    .img-card { 
+      border-radius: var(--radius-sm); overflow: hidden; 
+      border: 1px solid rgba(214, 172, 114, 0.2); 
+      background: #030604;
+      position: relative;
+    }
+    .img-card-label {
+      padding: 8px 12px;
+      background: rgba(214, 172, 114, 0.08); border-bottom: 1px solid rgba(214, 172, 114, 0.2);
+      font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+      color: var(--tan); letter-spacing: 1.5px; text-transform: uppercase;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .nvd-viewport {
+      position: relative;
+      aspect-ratio: 4/3;
+      overflow: hidden;
+      background: #030604;
+    }
+    /* Raster scanlines and vignette for NVD view */
+    .nvd-viewport::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: 
+        linear-gradient(rgba(0, 230, 118, 0.04) 50%, rgba(0, 0, 0, 0.12) 50%),
+        radial-gradient(circle, transparent 40%, rgba(5, 8, 6, 0.75) 100%);
+      background-size: 100% 4px, 100% 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+    /* Simulated scope digital grid lines */
+    .nvd-viewport::after {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 230, 118, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 230, 118, 0.06) 1px, transparent 1px);
+      background-size: 24px 24px;
+      pointer-events: none;
+      z-index: 4;
+    }
+    .nvd-viewport img { 
+      width: 100%; height: 100%; display: block; object-fit: contain; 
+    }
+    /* Hide the dark vignette and grid lines on the processed result card to make annotations pop */
+    .img-card:last-child .nvd-viewport::before,
+    .img-card:last-child .nvd-viewport::after {
+      display: none !important;
+    }
+    
+    /* HUD Overlays inside viewport */
+    .nvd-hud {
+      position: absolute; inset: 0;
+      pointer-events: none; z-index: 6;
+      padding: 12px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      font-family: var(--font-mono); font-size: 9px;
+      color: var(--green);
+      text-shadow: 0 0 3px rgba(0, 230, 118, 0.6);
+    }
+    .hud-top, .hud-bottom { display: flex; justify-content: space-between; }
+    .hud-center {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hud-crosshair {
+      width: 90px; height: 90px;
+      color: var(--green);
+      opacity: 0.45;
+    }
+    .pulse-red-dot {
+      color: var(--danger);
+      display: flex; align-items: center; gap: 4px;
+      font-weight: 700;
+      animation: blinkText 1.2s infinite;
+    }
+    @keyframes blinkText { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+    /* ACTION BUTTONS */
+    .result-actions { display: flex; gap: 10px; }
+    .btn-outline {
+      flex: 1; padding: 11px 16px; border-radius: var(--radius-sm);
+      font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer;
+      text-decoration: none;
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      transition: all 0.2s ease;
+    }
+    .btn-outline svg { width: 14px; height: 14px; }
+    
+    .btn-cyan {
+      background: rgba(0, 230, 118, 0.08); border: 1px solid rgba(0, 230, 118, 0.3); color: var(--green);
+    }
+    .btn-cyan:hover { background: rgba(0, 230, 118, 0.16); border-color: var(--green); transform: translateY(-1px); }
+    
+    .btn-ghost {
+      background: rgba(214, 172, 114, 0.05); border: 1px solid rgba(214, 172, 114, 0.25); color: var(--tan);
+    }
+    .btn-ghost:hover { background: rgba(214, 172, 114, 0.12); border-color: var(--tan); transform: translateY(-1px); }
+
+    /* VIDEO RESULT CONTAINER */
+    .video-result-wrap {
+      border-radius: var(--radius-sm); overflow: hidden;
+      border: 1px solid rgba(0, 230, 118, 0.25); margin-bottom: 16px; background: #030604;
+      position: relative;
+      box-shadow: 0 0 15px rgba(0, 230, 118, 0.1);
+    }
+    .video-result-wrap video { width: 100%; display: block; max-height: 480px; position: relative; z-index: 1; }
+    .video-result-wrap::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(rgba(0, 230, 118, 0.03) 50%, rgba(0, 0, 0, 0.1) 50%);
+      background-size: 100% 4px;
+      pointer-events: none;
+      z-index: 2;
+    }
+    
+    .video-notes {
+      margin-top: 10px; padding: 10px 14px;
+      background: rgba(255, 143, 0, 0.06); border: 1px solid rgba(255, 143, 0, 0.2);
+      border-radius: var(--radius-sm); font-size: 12px; color: var(--amber); display: none;
+      font-family: var(--font-mono);
+      letter-spacing: 0.5px;
+    }
+    .video-notes.visible { display: block; }
+
+    /* SIDEBAR (HIDDEN IN STYLES AS PER SPECIFICATIONS) */
+    .sidebar { display: none !important; }
+    .log-header {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--glass-border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .log-title-group { display: flex; align-items: center; gap: 8px; }
+    .log-live-dot {
+      width: 7px; height: 7px; background: var(--green); border-radius: 50%;
+      animation: pulse-dot 1.8s ease-in-out infinite;
+    }
+    .log-title {
+      font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+      color: var(--green); letter-spacing: 2px;
+    }
+    .log-clear-btn {
+      padding: 4px 10px;
+      background: var(--glass); border: 1px solid var(--glass-border);
+      border-radius: 4px; font-family: var(--font-mono); font-size: 9px;
+      font-weight: 500; color: var(--text-muted); letter-spacing: 1px;
+      cursor: pointer; transition: color 0.2s, border-color 0.2s;
+    }
+    .log-clear-btn:hover { color: var(--danger); border-color: rgba(255,68,68,0.4); }
+    .log-scroll { height: 440px; overflow-y: auto; padding: 12px; }
+    .log-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; color: var(--text-muted); gap: 10px;
+    }
+    .log-empty svg { width: 32px; height: 32px; opacity: 0.3; }
+    .log-empty-text { font-size: 12px; opacity: 0.6; font-family: var(--font-mono); }
+    .log-items { display: flex; flex-direction: column; gap: 8px; }
+
+    /* LOG ENTRY */
+    .log-entry {
+      border-radius: var(--radius-sm); background: rgba(255,255,255,0.02);
+      border: 1px solid var(--glass-border); overflow: hidden;
+      animation: slideInRight 0.35s ease;
+    }
+    @keyframes slideInRight {
+      from { opacity:0; transform:translateX(20px); }
+      to   { opacity:1; transform:translateX(0); }
+    }
+    .log-entry-inner { display: flex; }
+    .log-accent { width: 3px; flex-shrink: 0; }
+    .log-accent.fire { background: var(--danger); }
+    .log-accent.land { background: var(--amber); }
+    .log-accent.mine { background: var(--green); }
+    .log-accent.safe { background: var(--green); }
+    .log-body { padding: 10px 12px; flex: 1; min-width: 0; }
+    .log-top-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 4px; gap: 6px;
+    }
+    .log-threat-name {
+      font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.8px; flex: 1; min-width: 0;
+    }
+    .log-threat-name.fire { color: var(--danger); }
+    .log-threat-name.land { color: var(--amber); }
+    .log-threat-name.mine { color: var(--green); }
+    .log-threat-name.safe { color: var(--green); }
+    .log-sev-badge {
+      padding: 2px 7px; border-radius: 4px;
+      font-family: var(--font-mono); font-size: 9px; font-weight: 500;
+      letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap;
+    }
+    .sev-high { background: rgba(255,61,0,0.15); color: var(--danger); }
+    .sev-med  { background: rgba(255,143,0,0.15); color: var(--amber); }
+    .sev-low  { background: rgba(0,230,118,0.15); color: var(--green); }
+    .sev-none { background: rgba(0,230,118,0.1); color: var(--green); }
+    .log-filename { font-size: 10px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; }
+    .log-timestamp { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); opacity: 0.6; }
+    .log-bar-wrap { margin-top: 6px; height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+    .log-bar-fill { height: 100%; border-radius: 2px; animation: barGrow 0.8s cubic-bezier(0.4,0,0.2,1) forwards; }
+    @keyframes barGrow { from { width: 0 !important; } }
+    .log-bar-fill.fire { background: var(--danger); }
+    .log-bar-fill.land { background: var(--amber); }
+    .log-bar-fill.mine { background: var(--green); }
+    .log-bar-fill.safe { background: var(--green); }
+
+    /* LOG STATS */
+    .log-stats {
+      border-top: 1px solid var(--glass-border); padding: 14px 16px;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+    }
+    .stat-cell { text-align: center; padding: 8px 4px; }
+    .stat-cell + .stat-cell { border-left: 1px solid var(--glass-border); }
+    .stat-val {
+      font-family: var(--font-mono); font-size: 22px; font-weight: 700;
+      line-height: 1; margin-bottom: 4px; transition: color 0.3s;
+    }
+    .stat-lbl { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
+    .stat-total .stat-val { color: var(--tan); }
+    .stat-threat .stat-val { color: var(--danger); }
+    .stat-safe  .stat-val { color: var(--green); }
+
+    /* MILITARY RADAR LOADING OVERLAY */
+    #loadingOverlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(5, 8, 6, 0.96);
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    #loadingOverlay.active { display: flex; }
+    
+    .radar-container {
+      position: relative;
+      width: 180px; height: 180px;
+      margin-bottom: 30px;
+      border: 1px solid rgba(0, 230, 118, 0.3);
+      border-radius: 50%;
+      box-shadow: 0 0 30px rgba(0, 230, 118, 0.1);
+      overflow: hidden;
+    }
+    .radar-sweep {
+      position: absolute; top: 50%; left: 50%;
+      width: 90px; height: 90px;
+      background: linear-gradient(45deg, rgba(0, 230, 118, 0.35) 0%, transparent 65%);
+      transform-origin: top left;
+      animation: sweep 2.2s linear infinite;
+      border-radius: 0 100% 0 0;
+    }
+    @keyframes sweep {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .radar-grid {
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle, transparent 30%, rgba(0, 230, 118, 0.1) 31%, rgba(0, 230, 118, 0.1) 32%, transparent 33%, transparent 60%, rgba(0, 230, 118, 0.1) 61%, rgba(0, 230, 118, 0.1) 62%, transparent 63%),
+        linear-gradient(rgba(0, 230, 118, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 230, 118, 0.05) 1px, transparent 1px);
+      background-size: 100% 100%, 20px 20px, 20px 20px;
+      background-position: center;
+    }
+    .radar-crosshair-center {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      color: var(--green);
+      font-size: 18px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      animation: radar-blink 1.2s ease-in-out infinite;
+    }
+    @keyframes radar-blink {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+
+    .scan-text-wrap { text-align: center; margin-bottom: 24px; }
+    .scan-main-text {
+      font-family: var(--font-mono); font-size: 16px; font-weight: 700;
+      color: var(--green); letter-spacing: 2px; margin-bottom: 8px;
+      text-transform: uppercase;
+      animation: textPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes textPulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+    #scanSubText {
+      font-family: var(--font-mono); font-size: 11px;
+      color: var(--tan); letter-spacing: 1.5px; min-height: 18px;
+      text-transform: uppercase;
+    }
+    
+    .progress-track {
+      width: 280px; height: 3px;
+      background: rgba(214, 172, 114, 0.1); border-radius: 2px; overflow: hidden;
+      border: 1px solid rgba(214, 172, 114, 0.2);
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--green), var(--tan));
+      border-radius: 2px;
+      animation: progressAnim 2.5s ease-in-out infinite;
+      box-shadow: 0 0 10px rgba(0, 230, 118, 0.4);
+    }
+    @keyframes progressAnim {
+      0%   { width:0%; margin-left:0%; }
+      50%  { width:70%; margin-left:0%; }
+      100% { width:0%; margin-left:100%; }
+    }
+  </style>
+</head>
+<body>
+<div class="glow-tl"></div>
+<div class="glow-br"></div>
+
+<!-- NAVBAR -->
+<nav>
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">
+      <div class="nav-logo-icon">DM</div>
+      <span class="nav-logo-text">D-MIND</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="detection.html" class="active">Detection</a></li>
+      <li><a href="dashboard.html">Dashboard</a></li>
+    </ul>
+    <div class="nav-right">
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        AUTO-ROUTING ACTIVE
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay">
+  <div class="radar-container">
+    <div class="radar-grid"></div>
+    <div class="radar-sweep"></div>
+    <div class="radar-crosshair-center">⌖</div>
+  </div>
+  <div class="scan-text-wrap">
+    <div class="scan-main-text">ANALYZING PAYLOAD</div>
+    <div id="scanSubText">ROUTING TO AI MODELS...</div>
+  </div>
+  <div class="progress-track">
+    <div class="progress-fill"></div>
+  </div>
+</div>
+
+<!-- PAGE -->
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-header-top">
+      <div class="page-eyebrow">C4ISR TARGET acquisition console v4.2</div>
+      <div class="page-eyebrow-sep"></div>
+      <div class="telemetry-item">LAT: <span id="mockLat">34.0522 N</span></div>
+      <div class="telemetry-sep">|</div>
+      <div class="telemetry-item">LON: <span id="mockLon">118.2437 W</span></div>
+      <div class="telemetry-sep">|</div>
+      <div class="telemetry-item">ELEV: <span id="mockElev">342m</span></div>
+      <div class="telemetry-sep">|</div>
+      <div class="telemetry-item">SAT_LINK: ONLINE</div>
+    </div>
+    <div class="page-title">Disaster Intelligence Scanner</div>
+    <div class="page-subtitle">Tactical multispectral payload terminal. Upload aerial imagery or footage for real-time target identification, hazard zoning, and UXO detection.</div>
+  </div>
+
+  <div class="main-grid">
+
+    <!-- LEFT PANEL (Fills full width of scan space) -->
+    <div class="glass-panel">
+      <!-- Corner angle brackets -->
+      <div class="panel-bracket-tl"></div>
+      <div class="panel-bracket-tr"></div>
+      <div class="panel-bracket-bl"></div>
+      <div class="panel-bracket-br"></div>
+
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <div class="panel-title-icon">⌖</div>
+          <div class="panel-title">[ TARGET ACQUISITION TERMINAL ]</div>
+        </div>
+        <div class="capability-badges">
+          <span class="badge badge-fire"><span class="badge-dot"></span>Fire</span>
+          <span class="badge badge-land"><span class="badge-dot"></span>Landslide</span>
+          <span class="badge badge-mine"><span class="badge-dot"></span>Landmine</span>
+        </div>
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tabImageBtn" onclick="switchTab('image')">
+          <svg viewBox="0 0 24 24" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="3"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <path d="m21 15-5-5L5 21"/>
+          </svg>
+          [ OPTICAL DATA SCAN ]
+        </button>
+        <button class="tab-btn" id="tabVideoBtn" onclick="switchTab('video')">
+          <svg viewBox="0 0 24 24" stroke-width="2">
+            <polygon points="23 7 16 12 23 17 23 7"/>
+            <rect x="1" y="5" width="15" height="14" rx="2"/>
+          </svg>
+          [ AERIAL FOOTAGE SCAN ]
+        </button>
+        <div class="tab-indicator" id="tabIndicator"></div>
+      </div>
+
+      <!-- IMAGE TAB -->
+      <div class="tab-content active" id="tabImage">
+        <form id="uploadForm" enctype="multipart/form-data">
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="fileInput" name="image" accept="image/*" />
+            <div class="dz-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10" stroke-dasharray="3 3"/>
+                <path d="M12 2v4m0 12v4M2 12h4m12 0h4"/>
+                <circle cx="12" cy="12" r="4"/>
+              </svg>
+            </div>
+            <div class="dz-title">DRAG MISSION IMAGERY HERE OR CONNECT PAYLOAD MANUALLY</div>
+            <div class="dz-sub">SECURE MULTISPECTRAL DATA LINK INGESTION // PNG, JPG, WEBP, BMP</div>
+            <div class="dz-formats">
+              <span class="dz-fmt-tag">MISSION_LINK_A</span>
+              <span class="dz-fmt-tag">IMAGERY_PORT_1</span>
+              <span class="dz-fmt-tag">SECURE_INGEST</span>
+            </div>
+          </div>
+          
+          <div class="file-name-display" id="fileName">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/>
+              <polyline points="13 2 13 9 20 9"/>
+            </svg>
+            <span id="fileNameText">No file selected</span>
+          </div>
+          
+          <button type="submit" class="scan-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            RUN PAYLOAD ANALYSIS
+          </button>
+        </form>
+
+        <div class="alert" id="imageAlert">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span id="imageAlertText">An error occurred.</span>
+        </div>
+
+        <div class="result-area" id="imageResultArea">
+          <div class="result-divider">
+            <div class="result-divider-line"></div>
+            <div class="result-divider-label">Scan Results</div>
+            <div class="result-divider-line"></div>
+          </div>
+          
+          <div class="status-bar safe" id="imageStatusBar">
+            <div class="status-bar-dot"></div>
+            <div class="status-bar-text" id="imageStatusText">No threats detected</div>
+            <div class="status-bar-icon" id="imageStatusIcon">✔</div>
+          </div>
+          
+          <div class="image-comparison">
+            <!-- ORIGINAL NVD CARD -->
+            <div class="img-card">
+              <div class="img-card-label">
+                <span>Original Payload</span>
+                <span>SYS.ALT: 450m</span>
+              </div>
+              <div class="nvd-viewport">
+                <div class="nvd-hud">
+                  <div class="hud-top">
+                    <div>SYS: OPERATIONAL</div>
+                    <div>LAT 34.0522N</div>
+                  </div>
+                  <div class="hud-center">
+                    <svg class="hud-crosshair" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="0.75">
+                      <circle cx="50" cy="50" r="30" stroke-dasharray="2 2" />
+                      <line x1="50" y1="5" x2="50" y2="95" stroke-dasharray="1 3" />
+                      <line x1="5" y1="50" x2="95" y2="50" stroke-dasharray="1 3" />
+                      <path d="M 40 40 L 40 45 M 40 40 L 45 40" />
+                      <path d="M 60 40 L 60 45 M 60 40 L 55 40" />
+                      <path d="M 40 60 L 40 55 M 40 60 L 45 60" />
+                      <path d="M 60 60 L 60 55 M 60 60 L 55 60" />
+                    </svg>
+                  </div>
+                  <div class="hud-bottom">
+                    <div>ELEV: 342m</div>
+                    <div>FOV: 45deg</div>
+                  </div>
+                </div>
+                <img id="imageOriginal" src="" alt="Original image" />
+              </div>
+            </div>
+            
+            <!-- PROCESSED NVD CARD -->
+            <div class="img-card">
+              <div class="img-card-label">
+                <span>Processed Analytics</span>
+                <span>MODEL: HAZARD_DET_v2</span>
+              </div>
+              <div class="nvd-viewport">
+                <div class="nvd-hud">
+                  <div class="hud-top">
+                    <div>ANALYSER: ACTIVE</div>
+                    <div>LON 118.2437W</div>
+                  </div>
+                  <div class="hud-center">
+                    <svg class="hud-crosshair" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="0.75">
+                      <circle cx="50" cy="50" r="20" />
+                      <circle cx="50" cy="50" r="1.5" fill="currentColor" />
+                      <line x1="50" y1="5" x2="50" y2="95" stroke-dasharray="1 3" />
+                      <line x1="5" y1="50" x2="95" y2="50" stroke-dasharray="1 3" />
+                      <path d="M 30 30 L 35 30 M 30 30 L 30 35" />
+                      <path d="M 70 30 L 65 30 M 70 30 L 70 35" />
+                      <path d="M 30 70 L 35 70 M 30 70 L 30 65" />
+                      <path d="M 70 70 L 65 70 M 70 70 L 70 65" />
+                    </svg>
+                  </div>
+                  <div class="hud-bottom">
+                    <div>INDEX: UXO_VAL_89</div>
+                    <div>SPECTRAL: IR-ON</div>
+                  </div>
+                </div>
+                <img id="imageResult" src="" alt="Processed image" />
+              </div>
+            </div>
+          </div>
+          
+          <div class="result-actions">
+            <a id="imageDownloadBtn" href="#" download class="btn-outline btn-cyan">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Download Result
+            </a>
+            <button class="btn-outline btn-ghost" onclick="resetImageScan()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="1 4 1 10 7 10"/>
+                <path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+              </svg>
+              New Scan
+            </button>
+          </div>
+        </div>
+      </div><!-- /tabImage -->
+
+      <!-- VIDEO TAB -->
+      <div class="tab-content" id="tabVideo">
+        <form id="videoForm" enctype="multipart/form-data">
+          <div class="dropzone" id="videoDrop">
+            <input type="file" id="videoInput" name="video" accept="video/*" />
+            <div class="dz-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <polygon points="23 7 16 12 23 17 23 7"/>
+                <rect x="1" y="5" width="15" height="14" rx="1"/>
+                <path d="M6 10h4v4H6z"/>
+              </svg>
+            </div>
+            <div class="dz-title">DRAG MISSION IMAGERY HERE OR CONNECT PAYLOAD MANUALLY</div>
+            <div class="dz-sub">SECURE AERIAL TELEMETRY STREAM LINK // MP4, AVI, MOV, MKV</div>
+            <div class="dz-formats">
+              <span class="dz-fmt-tag">STREAM_LINK_B</span>
+              <span class="dz-fmt-tag">TELEMETRY_PORT_2</span>
+              <span class="dz-fmt-tag">UAV_VIDEO</span>
+            </div>
+          </div>
+          
+          <div class="file-name-display" id="videoFileName">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2"/>
+            </svg>
+            <span id="videoFileNameText">No file selected</span>
+          </div>
+          
+          <button type="submit" class="scan-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            RUN PAYLOAD ANALYSIS
+          </button>
+        </form>
+
+        <div class="alert" id="videoAlert">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span id="videoAlertText">An error occurred.</span>
+        </div>
+
+        <div class="result-area" id="videoResultArea">
+          <div class="result-divider">
+            <div class="result-divider-line"></div>
+            <div class="result-divider-label">Video Results</div>
+            <div class="result-divider-line"></div>
+          </div>
+          
+          <div class="status-bar safe" id="videoStatusBar">
+            <div class="status-bar-dot"></div>
+            <div class="status-bar-text" id="videoStatusText">Processing complete</div>
+            <div class="status-bar-icon">🎬</div>
+          </div>
+          
+          <div class="video-result-wrap">
+            <div class="nvd-hud">
+              <div class="hud-top">
+                <div>VIDEO PAYLOAD</div>
+                <div class="pulse-red-dot">● SCANNING</div>
+              </div>
+              <div class="hud-center">
+                <svg class="hud-crosshair" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="0.75">
+                  <rect x="25" y="25" width="50" height="50" stroke-dasharray="2 2" />
+                  <circle cx="50" cy="50" r="4" />
+                  <line x1="50" y1="5" x2="50" y2="95" stroke-dasharray="1 3" />
+                  <line x1="5" y1="50" x2="95" y2="50" stroke-dasharray="1 3" />
+                </svg>
+              </div>
+              <div class="hud-bottom">
+                <div>MODE: AERIAL STARE</div>
+                <div>FPS: 30.00</div>
+              </div>
+            </div>
+            <video id="videoResult" controls>Your browser does not support the video tag.</video>
+          </div>
+          
+          <div class="video-notes" id="videoNotes"></div>
+          
+          <div class="result-actions">
+            <a id="videoDownloadBtn" href="#" download class="btn-outline btn-cyan">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Download Video
+            </a>
+            <button class="btn-outline btn-ghost" onclick="resetVideoScan()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="1 4 1 10 7 10"/>
+                <path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+              </svg>
+              New Scan
+            </button>
+          </div>
+        </div>
+      </div><!-- /tabVideo -->
+    </div><!-- /left panel -->
+
+    <!-- RIGHT PANEL (HIDDEN IN CSS FOR BROAD LAYOUT VIEW) -->
+    <div class="sidebar">
+      <div class="glass-panel">
+        <div class="log-header">
+          <div class="log-title-group">
+            <div class="log-live-dot"></div>
+            <div class="log-title">Detection Log</div>
+          </div>
+          <button class="log-clear-btn" onclick="clearLog()">CLEAR</button>
+        </div>
+        <div class="log-scroll" id="logScroll">
+          <div class="log-empty" id="logEmpty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            <div class="log-empty-text">No scans yet</div>
+          </div>
+          <div class="log-items" id="logItems"></div>
+        </div>
+        <div class="log-stats">
+          <div class="stat-cell stat-total">
+            <div class="stat-val" id="statTotal">0</div>
+            <div class="stat-lbl">Total</div>
+          </div>
+          <div class="stat-cell stat-threat">
+            <div class="stat-val" id="statThreats">0</div>
+            <div class="stat-lbl">Threats</div>
+          </div>
+          <div class="stat-cell stat-safe">
+            <div class="stat-val" id="statSafe">0</div>
+            <div class="stat-lbl">Clear</div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /sidebar -->
+
+  </div><!-- /main-grid -->
+</div><!-- /page-wrap -->
+
+<script>
+  /* ─── CONFIG ─── */
+  const BACKEND_URL = '';
+
+  /* ─── STATE ─── */
+  let totalScans = 0, threatScans = 0, safeScans = 0;
+
+  /* ─── LOADING ─── */
+  const scanMessages = [
+    'ESTABLISHING SECURE PAYLOAD LINK...',
+    'INGESTING RAW PIXEL ARRAY...',
+    'RUNNING MULTISPECTRAL INFERENCE...',
+    'IDENTIFYING CLASSIFIED THREAT OBJECTS...',
+    'APPLYING PIXEL SEGMENTATION MASK...',
+    'CALCULATING BEARING & COORDINATES...',
+    'COMPUTING THREAT SEVERITY...',
+    'COMPILING C4ISR REPORT SUMMARY...'
+  ];
+  let scanMsgInterval = null, scanMsgIdx = 0;
+
+  function startLoading() {
+    document.getElementById('loadingOverlay').classList.add('active');
+    scanMsgIdx = 0;
+    document.getElementById('scanSubText').textContent = scanMessages[0];
+    scanMsgInterval = setInterval(function() {
+      scanMsgIdx = (scanMsgIdx + 1) % scanMessages.length;
+      document.getElementById('scanSubText').textContent = scanMessages[scanMsgIdx];
+    }, 1600);
+  }
+
+  function stopLoading() {
+    document.getElementById('loadingOverlay').classList.remove('active');
+    if (scanMsgInterval) { clearInterval(scanMsgInterval); scanMsgInterval = null; }
+  }
+
+  /* ─── TABS ─── */
+  function switchTab(tab) {
+    var indicator = document.getElementById('tabIndicator');
+    var imgBtn = document.getElementById('tabImageBtn');
+    var vidBtn = document.getElementById('tabVideoBtn');
+    var imgTab = document.getElementById('tabImage');
+    var vidTab = document.getElementById('tabVideo');
+    if (tab === 'image') {
+      imgBtn.classList.add('active'); vidBtn.classList.remove('active');
+      imgTab.classList.add('active'); vidTab.classList.remove('active');
+      var r = imgBtn.getBoundingClientRect();
+      var b = imgBtn.closest('.tab-bar').getBoundingClientRect();
+      indicator.style.left = (r.left - b.left) + 'px';
+      indicator.style.width = r.width + 'px';
+    } else {
+      vidBtn.classList.add('active'); imgBtn.classList.remove('active');
+      vidTab.classList.add('active'); imgTab.classList.remove('active');
+      var r2 = vidBtn.getBoundingClientRect();
+      var b2 = vidBtn.closest('.tab-bar').getBoundingClientRect();
+      indicator.style.left = (r2.left - b2.left) + 'px';
+      indicator.style.width = r2.width + 'px';
+    }
+  }
+
+  window.addEventListener('load', function() { switchTab('image'); });
+
+  /* ─── FILE DISPLAY ─── */
+  var fileInput = document.getElementById('fileInput');
+  var fileName = document.getElementById('fileName');
+  var fileNameText = document.getElementById('fileNameText');
+  fileInput.addEventListener('change', function() {
+    if (fileInput.files && fileInput.files[0]) {
+      fileNameText.textContent = fileInput.files[0].name;
+      fileName.classList.add('visible');
+    } else {
+      fileName.classList.remove('visible');
+    }
+  });
+
+  var videoInput = document.getElementById('videoInput');
+  var videoFileName = document.getElementById('videoFileName');
+  var videoFileNameText = document.getElementById('videoFileNameText');
+  videoInput.addEventListener('change', function() {
+    if (videoInput.files && videoInput.files[0]) {
+      videoFileNameText.textContent = videoInput.files[0].name;
+      videoFileName.classList.add('visible');
+    } else {
+      videoFileName.classList.remove('visible');
+    }
+  });
+
+  /* ─── DRAG AND DROP ─── */
+  function setupDragDrop(dropzoneId, inputId) {
+    var dz = document.getElementById(dropzoneId);
+    var inp = document.getElementById(inputId);
+    ['dragenter','dragover'].forEach(function(evt) {
+      dz.addEventListener(evt, function(e) {
+        e.preventDefault(); e.stopPropagation();
+        dz.classList.add('drag-active');
+      });
+    });
+    ['dragleave','dragend','drop'].forEach(function(evt) {
+      dz.addEventListener(evt, function(e) {
+        e.preventDefault(); e.stopPropagation();
+        dz.classList.remove('drag-active');
+      });
+    });
+    dz.addEventListener('drop', function(e) {
+      var files = e.dataTransfer.files;
+      if (files.length > 0) {
+        var dt = new DataTransfer();
+        dt.items.add(files[0]);
+        inp.files = dt.files;
+        inp.dispatchEvent(new Event('change'));
+      }
+    });
+  }
+  setupDragDrop('dropzone', 'fileInput');
+  setupDragDrop('videoDrop', 'videoInput');
+
+  /* ─── ALERT HELPERS ─── */
+  function showAlert(alertId, textId, message) {
+    document.getElementById(alertId).classList.add('visible');
+    if (textId) document.getElementById(textId).textContent = message;
+  }
+  function hideAlert(alertId) {
+    document.getElementById(alertId).classList.remove('visible');
+  }
+
+  /* ─── IMAGE FORM SUBMIT ─── */
+  document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    hideAlert('imageAlert');
+    if (!fileInput.files || !fileInput.files[0]) {
+      showAlert('imageAlert', 'imageAlertText', 'Please select an image file before scanning.');
+      return;
+    }
+    var formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    var fname = fileInput.files[0].name;
+    startLoading();
+    document.getElementById('imageResultArea').classList.remove('visible');
+    try {
+      var res = await fetch('/api/detection/image', { method: 'POST', body: formData });
+      var data = await res.json();
+      stopLoading();
+      if (!res.ok) {
+        showAlert('imageAlert', 'imageAlertText', data.error || data.detail || 'Server error. Please try again.');
+        return;
+      }
+      var resultUrl = BACKEND_URL + data.result_url;
+      var originalUrl = BACKEND_URL + data.original_url;
+      document.getElementById('imageOriginal').src = originalUrl;
+      document.getElementById('imageResult').src = resultUrl;
+      document.getElementById('imageDownloadBtn').href = resultUrl;
+      var statusBar = document.getElementById('imageStatusBar');
+      var statusText = document.getElementById('imageStatusText');
+      var statusIcon = document.getElementById('imageStatusIcon');
+      var statusRaw = (data.status_text || '').toLowerCase();
+      var isSafe = statusRaw.includes('safe') || statusRaw.includes('no threat') || statusRaw.includes('clear');
+      statusBar.className = 'status-bar ' + (isSafe ? 'safe' : 'threat');
+      statusText.textContent = data.status_text || (isSafe ? 'No threats detected' : 'Threat detected');
+      statusIcon.textContent = isSafe ? '✔' : '⚠';
+      document.getElementById('imageResultArea').classList.add('visible');
+      var detections = data.detections || [];
+      var label = detections.length > 0 ? String(detections[0]).toLowerCase() : (isSafe ? 'safe' : 'threat');
+      addLogEntry(label, fname, isSafe, detections, false);
+    } catch(err) {
+      stopLoading();
+      showAlert('imageAlert', 'imageAlertText', 'Network error: ' + err.message);
+    }
+  });
+
+  /* ─── VIDEO FORM SUBMIT ─── */
+  document.getElementById('videoForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    hideAlert('videoAlert');
+    if (!videoInput.files || !videoInput.files[0]) {
+      showAlert('videoAlert', 'videoAlertText', 'Please select a video file before scanning.');
+      return;
+    }
+    var formData = new FormData();
+    formData.append('video', videoInput.files[0]);
+    var fname = videoInput.files[0].name;
+    startLoading();
+    document.getElementById('videoResultArea').classList.remove('visible');
+    try {
+      var res = await fetch('/api/detection/video', { method: 'POST', body: formData });
+      var data = await res.json();
+      stopLoading();
+      if (!res.ok) {
+        showAlert('videoAlert', 'videoAlertText', data.error || data.detail || 'Server error. Please try again.');
+        return;
+      }
+      var vidUrl = BACKEND_URL + data.result_url;
+      var videoEl = document.getElementById('videoResult');
+      videoEl.src = vidUrl;
+      document.getElementById('videoDownloadBtn').href = vidUrl;
+      var vStatusBar = document.getElementById('videoStatusBar');
+      var vStatusText = document.getElementById('videoStatusText');
+      var statusRaw = (data.status_text || '').toLowerCase();
+      var isSafe = statusRaw.includes('safe') || statusRaw.includes('no threat') || statusRaw.includes('clear');
+      vStatusBar.className = 'status-bar ' + (isSafe ? 'safe' : 'threat');
+      vStatusText.textContent = data.status_text || 'Processing complete';
+      var notesEl = document.getElementById('videoNotes');
+      if (data.notes) {
+        notesEl.textContent = '⚠ ' + data.notes;
+        notesEl.classList.add('visible');
+      } else {
+        notesEl.classList.remove('visible');
+      }
+      document.getElementById('videoResultArea').classList.add('visible');
+      var detections = data.detections || [];
+      var label = detections.length > 0 ? String(detections[0]).toLowerCase() : (isSafe ? 'safe' : 'threat');
+      addLogEntry(label, fname, isSafe, detections, true);
+    } catch(err) {
+      stopLoading();
+      showAlert('videoAlert', 'videoAlertText', 'Network error: ' + err.message);
+    }
+  });
+
+  /* ─── RESET ─── */
+  function resetImageScan() {
+    document.getElementById('imageResultArea').classList.remove('visible');
+    hideAlert('imageAlert');
+    fileInput.value = '';
+    fileName.classList.remove('visible');
+  }
+  function resetVideoScan() {
+    document.getElementById('videoResultArea').classList.remove('visible');
+    hideAlert('videoAlert');
+    videoInput.value = '';
+    videoFileName.classList.remove('visible');
+  }
+
+  /* ─── LOG ─── */
+  function classifyLabel(label) {
+    var l = String(label).toLowerCase();
+    if (l.includes('fire')) return 'fire';
+    if (l.includes('landslide') || l.includes('land slide') || l.includes('slide')) return 'land';
+    if (l.includes('mine') || l.includes('landmine')) return 'mine';
+    return 'safe';
+  }
+
+  function getSeverity(label, isSafe) {
+    if (isSafe) return { cls: 'sev-none', text: 'SAFE', pct: 10 };
+    var l = String(label).toLowerCase();
+    if (l.includes('fire')) return { cls: 'sev-high', text: 'HIGH', pct: 88 };
+    if (l.includes('landslide')) return { cls: 'sev-med', text: 'MEDIUM', pct: 62 };
+    if (l.includes('mine')) return { cls: 'sev-med', text: 'MEDIUM', pct: 55 };
+    return { cls: 'sev-low', text: 'LOW', pct: 30 };
+  }
+
+  function addLogEntry(label, filename, isSafe, detections, isVideo) {
+    var logItems = document.getElementById('logItems');
+    var logEmpty = document.getElementById('logEmpty');
+    logEmpty.style.display = 'none';
+    var cls = classifyLabel(label);
+    var sev = getSeverity(label, isSafe);
+    var now = new Date();
+    var time = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    var threatNameMap = { fire: 'FIRE DETECTED', land: 'LANDSLIDE RISK', mine: 'LANDMINE RISK', safe: 'AREA CLEAR' };
+    var icon = isVideo ? '🎬' : '🖼️';
+    var entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML =
+      '<div class="log-entry-inner">' +
+        '<div class="log-accent ' + cls + '"></div>' +
+        '<div class="log-body">' +
+          '<div class="log-top-row">' +
+            '<div class="log-threat-name ' + cls + '">' + (threatNameMap[cls] || label.toUpperCase()) + '</div>' +
+            '<div class="log-sev-badge ' + sev.cls + '">' + sev.text + '</div>' +
+          '</div>' +
+          '<div class="log-filename">' + icon + ' ' + filename + '</div>' +
+          '<div class="log-timestamp">' + time + ' &middot; ' + (isVideo ? 'Video' : 'Image') + ' scan</div>' +
+          '<div class="log-bar-wrap"><div class="log-bar-fill ' + cls + '" style="width:' + sev.pct + '%"></div></div>' +
+        '</div>' +
+      '</div>';
+    logItems.insertBefore(entry, logItems.firstChild);
+    totalScans++;
+    if (isSafe) safeScans++; else threatScans++;
+    updateStats();
+  }
+
+  function clearLog() {
+    document.getElementById('logItems').innerHTML = '';
+    document.getElementById('logEmpty').style.display = '';
+    totalScans = 0; threatScans = 0; safeScans = 0;
+    updateStats();
+  }
+
+  function updateStats() {
+    document.getElementById('statTotal').textContent = totalScans;
+    document.getElementById('statThreats').textContent = threatScans;
+    document.getElementById('statSafe').textContent = safeScans;
+  }
+
+  /* ─── DYNAMIC COORDINATE FLUCK ─── */
+  setInterval(() => {
+    const lat = 34.0522 + (Math.random() - 0.5) * 0.0012;
+    const lon = -118.2437 + (Math.random() - 0.5) * 0.0012;
+    const elev = Math.round(342 + (Math.random() - 0.5) * 6);
+    const latEl = document.getElementById('mockLat');
+    const lonEl = document.getElementById('mockLon');
+    const elevEl = document.getElementById('mockElev');
+    if (latEl) latEl.textContent = lat.toFixed(4) + ' N';
+    if (lonEl) lonEl.textContent = Math.abs(lon).toFixed(4) + ' W';
+    if (elevEl) elevEl.textContent = elev + 'm';
+  }, 2500);
+</script>
+</body>
+</html>

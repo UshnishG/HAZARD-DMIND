@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "https://CHANGE-ME-TO-BACKEND-URL.railway.app/api/:match*"
+    },
+    {
+      "source": "/static/:match*",
+      "destination": "https://CHANGE-ME-TO-BACKEND-URL.railway.app/static/:match*"
+    }
+  ]
+}

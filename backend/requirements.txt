@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+python-multipart
+opencv-python-headless
+numpy
+roboflow
+ultralytics
+supervision
+huggingface_hub
+inference_sdk
+python-dotenv
