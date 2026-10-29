@@ -180,18 +180,26 @@ def db_stats():
 # ==============================
 from huggingface_hub import hf_hub_download
 
-from inference_sdk import InferenceHTTPClient
+from inference_sdk import InferenceHTTPClient, InferenceConfiguration
 
-ROBOFLOW_API_KEY = os.environ.get("ROBOFLOW_API_KEY", "LFQ3tQ1G6KvnwISSoIFW")
-ROBOFLOW_WORKSPACE = os.environ.get("ROBOFLOW_WORKSPACE", "ieees-workspace-lez6m")
-ROBOFLOW_WORKFLOW_ID = os.environ.get("ROBOFLOW_WORKFLOW_ID", "landslide-segmentation-api-1783455950308")
+ROBOFLOW_API_KEY = os.environ.get("ROBOFLOW_API_KEY", "7WImeEbnZMEXv18YCWUw")
+ROBOFLOW_WORKSPACE = os.environ.get("ROBOFLOW_WORKSPACE", "aatreyees-workspace")
+ROBOFLOW_WORKFLOW_ID = os.environ.get("ROBOFLOW_WORKFLOW_ID", "general-segmentation-api")
 
 print("Loading Landslide Model (Roboflow Workflow)...")
 try:
-    rf_client = InferenceHTTPClient(
-        api_url="https://serverless.roboflow.com",
-        api_key=ROBOFLOW_API_KEY
-    )
+    try:
+        rf_client = InferenceHTTPClient(
+            api_url="https://serverless.roboflow.com",
+            api_key=ROBOFLOW_API_KEY
+        ).configure(InferenceConfiguration(
+            api_key_transport="header"
+        ))
+    except (TypeError, Exception):
+        rf_client = InferenceHTTPClient(
+            api_url="https://serverless.roboflow.com",
+            api_key=ROBOFLOW_API_KEY
+        )
     print("Landslide workflow client loaded")
 except Exception as e:
     rf_client = None
@@ -374,6 +382,9 @@ def detect_landslide(frame, annotated, image_path):
             images={
                 "image": image_path
             },
+            parameters={
+                "classes": "landslide"
+            },
             use_cache=True
         )
         
@@ -427,7 +438,7 @@ def detect_landslide(frame, annotated, image_path):
                 severity_str = f"LANDSLIDE  {sev}"
             
         # 2. Extract and overlay the output_image (mask)
-        overlay_data = output_dict.get("output_image")
+        overlay_data = output_dict.get("annotated_image") or output_dict.get("output_image")
         if overlay_data:
             if isinstance(overlay_data, dict):
                 overlay_data = overlay_data.get("value") or overlay_data.get("base64") or overlay_data.get("data")
