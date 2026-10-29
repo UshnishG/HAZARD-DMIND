@@ -12,7 +12,5 @@ services:
         value: Ushnish2004/LandmineModel
       - key: ROBOFLOW_API_KEY
         sync: true
-      - key: ROBOFLOW_WORKSPACE
-        value: aatreyees-workspace
-      - key: ROBOFLOW_WORKFLOW_ID
-        value: general-segmentation-api
+      - key: ROBOFLOW_MODEL_ID
+        value: segformer-landslide-detection/2

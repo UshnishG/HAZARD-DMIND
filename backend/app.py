@@ -183,10 +183,9 @@ from huggingface_hub import hf_hub_download
 from inference_sdk import InferenceHTTPClient, InferenceConfiguration
 
 ROBOFLOW_API_KEY = os.environ.get("ROBOFLOW_API_KEY", "7WImeEbnZMEXv18YCWUw")
-ROBOFLOW_WORKSPACE = os.environ.get("ROBOFLOW_WORKSPACE", "aatreyees-workspace")
-ROBOFLOW_WORKFLOW_ID = os.environ.get("ROBOFLOW_WORKFLOW_ID", "general-segmentation-api")
+LANDSLIDE_MODEL_ID = os.environ.get("ROBOFLOW_MODEL_ID", f"{LANDSLIDE_PROJECT}/{LANDSLIDE_VERSION}")
 
-print("Loading Landslide Model (Roboflow Workflow)...")
+print("Loading Landslide Model (Roboflow Client)...")
 try:
     try:
         rf_client = InferenceHTTPClient(
@@ -373,112 +372,54 @@ def detect_landslide(frame, annotated, image_path):
     severity_str    = ""
     rf_fire_found   = False
     rf_fire_sev     = ""
-    
+
     try:
-        # Run workflow via inference_sdk
-        result = rf_client.run_workflow(
-            workspace_name=ROBOFLOW_WORKSPACE,
-            workflow_id=ROBOFLOW_WORKFLOW_ID,
-            images={
-                "image": image_path
-            },
-            parameters={
-                "classes": "landslide"
-            },
-            use_cache=True
-        )
+        # Run direct model inference
+        result = rf_client.infer(image_path, model_id=LANDSLIDE_MODEL_ID)
         
-        # 1. Parse predictions to determine severity
-        predictions = []
-        output_dict = {}
-        if isinstance(result, list) and len(result) > 0:
-            output_dict = result[0]
-        elif isinstance(result, dict):
-            output_dict = result
-
-        # Check fire-proofing output
-        if output_dict.get("fire_detected") is True:
-            rf_fire_found = True
-            fire_preds = output_dict.get("fire_predictions", [])
-            total_fire_area = 0
-            if isinstance(fire_preds, list):
-                for fp in fire_preds:
-                    total_fire_area += fp.get("width", 0) * fp.get("height", 0)
-            if total_fire_area > 0:
-                perc = (total_fire_area / (w * h)) * 100
-                rf_fire_sev = severity_from_area(perc)
-            else:
-                rf_fire_sev = "LOW"
-
-        # Extract predictions list
-        if "predictions" in output_dict:
-            inner = output_dict["predictions"]
-            if isinstance(inner, dict) and "predictions" in inner:
-                predictions = inner["predictions"]
-            elif isinstance(inner, list):
-                predictions = inner
-        
-        # Calculate severity based on bounding box areas if predictions exist
-        if predictions:
-            total_area = 0
-            for pred in predictions:
-                # Ensure we only count predictions actually labeled as landslide
-                pred_class = str(pred.get("class", "")).lower()
-                if "fire" in pred_class:
-                    continue  # Skip false positives or fire detections
+        predictions = result.get("predictions", {})
+        if isinstance(predictions, dict):
+            class_map = predictions.get("class_map", {})
+            present = predictions.get("present_class_ids", [])
+            
+            # Find class index for landslide
+            ls_class_id = None
+            for cid, cname in class_map.items():
+                if "landslide" in str(cname).lower():
+                    ls_class_id = int(cid)
+                    break
+            if ls_class_id is None:
+                ls_class_id = 1
                 
-                pred_w = pred.get("width", 0)
-                pred_h = pred.get("height", 0)
-                total_area += (pred_w * pred_h)
-            
-            if total_area > 0 and not rf_fire_found:
-                landslide_found = True
-                perc = (total_area / (w * h)) * 100
-                sev = severity_from_area(perc)
-                severity_str = f"LANDSLIDE  {sev}"
-            
-        # 2. Extract and overlay the output_image (mask)
-        overlay_data = output_dict.get("annotated_image") or output_dict.get("output_image")
-        if overlay_data:
-            if isinstance(overlay_data, dict):
-                overlay_data = overlay_data.get("value") or overlay_data.get("base64") or overlay_data.get("data")
-            
-            if isinstance(overlay_data, str):
-                if overlay_data.startswith("data:image"):
-                    overlay_data = overlay_data.split(",", 1)[1]
-                elif overlay_data.startswith("http://") or overlay_data.startswith("https://"):
-                    import requests
-                    resp = requests.get(overlay_data, timeout=10)
-                    if resp.status_code == 200:
-                        overlay_data = base64.b64encode(resp.content).decode("utf-8")
-                    else:
-                        overlay_data = None
-                
-                if overlay_data:
-                    # Decode base64 to numpy array
-                    image_bytes = base64.b64decode(overlay_data)
-                    np_arr = np.frombuffer(image_bytes, np.uint8)
-                    mask_img = cv2.imdecode(np_arr, cv2.IMREAD_UNCHANGED)
+            b64_mask = predictions.get("segmentation_mask")
+            if b64_mask and ls_class_id in present:
+                mask_bytes = base64.b64decode(b64_mask)
+                seg_mask = cv2.imdecode(np.frombuffer(mask_bytes, np.uint8), cv2.IMREAD_UNCHANGED)
+                if seg_mask is not None:
+                    seg_mask = cv2.resize(seg_mask, (w, h), interpolation=cv2.INTER_NEAREST)
+                    ls_mask = (seg_mask == ls_class_id).astype(np.uint8)
+                    ls_pixels = np.count_nonzero(ls_mask)
                     
-                    if mask_img is not None:
-                        mask_img = cv2.resize(mask_img, (w, h))
-                        # If it's a 4-channel image (RGBA/BGRA), overlay using alpha channel
-                        if mask_img.shape[-1] == 4:
-                            alpha = mask_img[:, :, 3] / 255.0
-                            for c in range(3):
-                                annotated[:, :, c] = (alpha * mask_img[:, :, c] + (1 - alpha) * annotated[:, :, c])
-                        else:
-                            # If 3-channel, extract mask pixels using absdiff against original frame
-                            diff = cv2.absdiff(frame, mask_img[:, :, :3])
-                            gray_diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
-                            _, thresh = cv2.threshold(gray_diff, 5, 255, cv2.THRESH_BINARY)
-                            # Copy only the mask overlay pixels at 100% opacity, preserving other annotations
-                            annotated[thresh > 0] = mask_img[:, :, :3][thresh > 0]
+                    if ls_pixels > 0:
+                        landslide_found = True
+                        perc = (ls_pixels / (w * h)) * 100
+                        sev = severity_from_area(perc)
+                        severity_str = f"LANDSLIDE  {sev}"
+                        
+                        color = LANDSLIDE_COLORS[sev]
+                        alpha = alpha_from_severity(sev)
+                        
+                        overlay = annotated.copy()
+                        overlay[ls_mask > 0] = color
+                        annotated = cv2.addWeighted(overlay, alpha, annotated, 1 - alpha, 0)
+                        
+                        contours, _ = cv2.findContours(ls_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                        cv2.polylines(annotated, contours, True, color, 2)
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        print("Landslide SDK workflow error:", e)
+        print("Landslide infer error:", e)
     return annotated, landslide_found, severity_str, rf_fire_found, rf_fire_sev
 
 

@@ -81,8 +81,7 @@ Make sure you have **Python 3.10+** installed.
 5. Open `.env` and fill in your Roboflow workspace credentials:
    ```env
    ROBOFLOW_API_KEY=your_private_api_key_here
-   ROBOFLOW_WORKSPACE=aatreyees-workspace
-   ROBOFLOW_WORKFLOW_ID=general-segmentation-api
+   ROBOFLOW_MODEL_ID=segformer-landslide-detection/2
    ```
 6. Start the local server:
    ```bash
