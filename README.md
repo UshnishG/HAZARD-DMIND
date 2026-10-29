@@ -1,3 +1,13 @@
+---
+title: Backend DMIND
+emoji: 🛡️
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # D-MIND: Tactical Disaster & Humanitarian Intelligence Platform
 
 D-MIND (Tactical Disaster & Humanitarian Intelligence Platform) is an AI-powered Edge UAV reconnaissance system designed to preserve civilian lives in post-conflict and active disaster zones. Deployed locally on an **NVIDIA Jetson Xavier NX**, the platform integrates multiple sensor payloads—including Optical (RGB), FLIR Thermal, and Ground Penetrating Radar (GPR)—to perform real-time autonomous threat classification, hazard zoning, and demining telemetry.
